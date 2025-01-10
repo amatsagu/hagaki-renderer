@@ -2,12 +2,14 @@ use std::{collections::HashMap, sync::LazyLock};
 
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-pub const CDN_PATH: &str = "../cdn";
+pub const CDN_PATH: &str = "C:/kikuricdn";
 pub const CHARACTER_IMAGE_X: u32 = 245;
 pub const CHARACTER_IMAGE_Y: u32 = 370;
 pub const CARD_MAX_X: u32 = 303;
 pub const CARD_MAX_Y: u32 = 428;
 pub const DEFAULT_DYE_COLOR: u32 = 8289918;
+
+pub const FAN_Y_OFFSETS: [f32; 4] = [0.0, 0.005, 0.04, 0.15];
 
 pub const FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::new(|| {
     HashMap::from([(FrameType::DefaultFrame, FrameDetails {
@@ -34,7 +36,7 @@ pub const FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::ne
 });
 
 #[repr(u8)]
-#[derive(Eq, PartialEq, Hash, Serialize_repr, Deserialize_repr, Debug)]
+#[derive(Eq, PartialEq, Hash, Serialize_repr, Deserialize_repr, Debug, Clone)]
 pub enum FrameType {
     DefaultFrame = 0,
     BetaFrame,

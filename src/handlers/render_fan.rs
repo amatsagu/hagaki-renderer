@@ -10,7 +10,7 @@ use crate::models::RenderRequestData;
 use crate::utils;
 
 #[axum_macros::debug_handler]
-pub async fn render_card(
+pub async fn render_fan(
     Path(hash): Path<String>, 
     Extension(frames): Extension<Arc<HashMap<String, DynamicImage>>>
 ) -> Response<Body> {
@@ -20,15 +20,16 @@ pub async fn render_card(
         Ok(bytes) => bytes,
         Err(_) => return Response::builder().status(400).body(Body::from("Invalid card hash")).unwrap(),
     };
-    let decoded: RenderRequestData = match serde_json::from_slice(&bytes) {
+    let decoded: Vec<RenderRequestData> = match serde_json::from_slice(&bytes) {
         Ok(decoded) => decoded,
         Err(_) => return Response::builder().status(400).body(Body::from("Hash contains invalid data")).unwrap(),
     };
 
-    let image = match utils::render_card(decoded, &frames) {
+    let image = match utils::render_fan(decoded, &frames) {
         Ok(image) => image,
         Err(e) => return Response::builder().status(500).body(Body::from(e)).unwrap(),
     };
+
     let mut buffer = BufWriter::new(Cursor::new(Vec::new()));
     match image.write_to(&mut buffer, image::ImageFormat::Png) {
         Ok(_) =>(),

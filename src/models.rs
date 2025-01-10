@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::FrameType;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RenderRequestData {
     pub id: u32,
     pub dye: Option<u32>,

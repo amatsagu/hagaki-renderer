@@ -15,6 +15,7 @@ async fn main() -> Result<(), std::io::Error> {
 
     let router = Router::new()
         .route("/render/card/{hash}", get(handlers::render_card))
+        .route("/render/fan/{hash}", get(handlers::render_fan))
         .fallback(|| async { Response::builder().status(418).body(Body::empty()).unwrap() })
         .layer(Extension(frames));
 
