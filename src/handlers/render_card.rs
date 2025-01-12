@@ -1,5 +1,5 @@
 use axum::{body::Body, extract::Path, response::Response, Extension};
-use base64::{engine::general_purpose::STANDARD as Engine, Engine as _};
+use base64::{engine::general_purpose::STANDARD_NO_PAD as Engine, Engine as _};
 use image::DynamicImage;
 use std::collections::HashMap;
 use std::io::{BufWriter, Cursor};
