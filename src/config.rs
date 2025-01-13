@@ -8,6 +8,7 @@ pub const CHARACTER_IMAGE_Y: u32 = 370;
 pub const CARD_MAX_X: u32 = 303;
 pub const CARD_MAX_Y: u32 = 428;
 pub const DEFAULT_DYE_COLOR: u32 = 8289918;
+pub const RENDER_TIMEOUT: f32 = 3.0;
 
 pub const FAN_Y_OFFSETS: [f32; 4] = [0.0, 0.005, 0.04, 0.15];
 

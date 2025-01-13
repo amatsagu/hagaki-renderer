@@ -6,6 +6,7 @@ use std::io::{BufWriter, Cursor};
 use std::sync::Arc;
 use std::time::Instant;
 
+use crate::config::RENDER_TIMEOUT;
 use crate::models::RenderRequestData;
 use crate::utils;
 
@@ -25,16 +26,28 @@ pub async fn render_fan(
         Err(_) => return Response::builder().status(400).body(Body::from("Hash contains invalid data")).unwrap(),
     };
 
-    let image = match utils::render_fan(decoded, &frames) {
+    if start.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Response::builder().status(503).body(Body::from("Render timeout")).unwrap();
+    }
+
+    let image = match utils::render_fan(decoded, &frames, &start) {
         Ok(image) => image,
         Err(e) => return Response::builder().status(500).body(Body::from(e)).unwrap(),
     };
+
+    if start.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Response::builder().status(503).body(Body::from("Render timeout")).unwrap();
+    }
 
     let mut buffer = BufWriter::new(Cursor::new(Vec::new()));
     match image.write_to(&mut buffer, image::ImageFormat::Png) {
         Ok(_) =>(),
         Err(_) => return Response::builder().status(500).body(Body::from("Cannot write image to buffer")).unwrap(),
     };
+
+    if start.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Response::builder().status(503).body(Body::from("Render timeout")).unwrap();
+    }
     
     Response::builder()
         .header("X-Processing-Time", (start.elapsed().as_nanos() as f64 / 1_000_000.0).to_string())

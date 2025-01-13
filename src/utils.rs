@@ -1,6 +1,6 @@
-use std::{collections::HashMap, path::Path, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc, time::Instant};
 
-use crate::{config::{CDN_PATH, DEFAULT_DYE_COLOR, FAN_Y_OFFSETS}, models::RenderRequestData};
+use crate::{config::{CDN_PATH, DEFAULT_DYE_COLOR, FAN_Y_OFFSETS, RENDER_TIMEOUT}, models::RenderRequestData};
 use image::{imageops::overlay, load_from_memory, DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageReader, Pixel, Rgba};
 use imageproc::geometric_transformations::{rotate_about_center, Interpolation};
 
@@ -31,7 +31,7 @@ pub fn load_frames() -> HashMap<String, DynamicImage> {
     frames
 }
 
-pub fn render_card(data: RenderRequestData, frames: &Arc<HashMap<String, DynamicImage>>) -> Result<DynamicImage, String> {
+pub fn render_card(data: RenderRequestData, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
     let image_path = if let Some(true) = data.custom_image {
         format!("{}/public/custom-character/{}.png", CDN_PATH, data.id)
     } else {
@@ -48,6 +48,10 @@ pub fn render_card(data: RenderRequestData, frames: &Arc<HashMap<String, Dynamic
         Err(_) => return Err(format!("Card with id {} not found.", data.id)),
     };
 
+    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+    }
+
     let (mask, decoration) = if let Some(frame) = data.frame {
         if let Some(true) = data.glow {
             (frames.get(&format!("{}-glow-mask", frame.to_string())), frames.get(&format!("{}-glow-static", frame.to_string())))
@@ -62,6 +66,10 @@ pub fn render_card(data: RenderRequestData, frames: &Arc<HashMap<String, Dynamic
         return Ok(character_image)
     }
 
+    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+    }
+
     let mask = mask.unwrap();
 
     let mut result = ImageBuffer::new(mask.width(), mask.height());
@@ -71,6 +79,10 @@ pub fn render_card(data: RenderRequestData, frames: &Arc<HashMap<String, Dynamic
     if let Err(_) = result.copy_from(&character_image, x, y) {
         return Err("Failed to copy character image to result image".to_string());
     };
+
+    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+    }
     // overlay(&mut result, &character_image, x as i64, y as i64);
 
     let dye = data.dye.unwrap_or_else(|| DEFAULT_DYE_COLOR);
@@ -89,6 +101,10 @@ pub fn render_card(data: RenderRequestData, frames: &Arc<HashMap<String, Dynamic
             mask_pixel[3]
         ]));
     });
+
+    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+    }
 
     // for (x, y, pixel) in mask.pixels().filter(|(_, _, p)| p[3] != 0) {
     //     let mask = pixel[0] as f32 / 255.0;
@@ -112,6 +128,10 @@ pub fn render_card(data: RenderRequestData, frames: &Arc<HashMap<String, Dynamic
             }
             p.blend(&decoration_pixel);
         })
+    }
+
+    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
     }
 
     Ok(result.into())
@@ -144,16 +164,20 @@ struct IndexedImage {
     index: usize
 }
 
-pub fn render_fan(data: Vec<RenderRequestData>, frames: &Arc<HashMap<String, DynamicImage>>) -> Result<DynamicImage, String> {
+pub fn render_fan(data: Vec<RenderRequestData>, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
     let mut images = Vec::new();
     let image_count = data.len();
     let mut x_offset = 0;
 
     for (i, card) in data.iter().enumerate() {
-        let image = match render_card(card.clone(), &frames) {
+        let image = match render_card(card.clone(), &frames, start_time) {
             Ok(image) => image,
             Err(e) => return Err(e),
         };
+
+        if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+            return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+        }
 
         let image = rotate_image(image, 5.0 * (i as isize - image_count as isize / 2) as f32);
         let offset = (image.width() as f32 * 0.6).ceil() as u32;
@@ -163,6 +187,10 @@ pub fn render_fan(data: Vec<RenderRequestData>, frames: &Arc<HashMap<String, Dyn
             index: i
         });
         x_offset += offset;
+    }
+
+    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
     }
     
     let middle_h = images[images.len() / 2].image.height();
@@ -176,12 +204,24 @@ pub fn render_fan(data: Vec<RenderRequestData>, frames: &Arc<HashMap<String, Dyn
         rearranged.push(images.get(i).unwrap());
         rearranged.push(images.get(images.len() - i - 1).unwrap());
     }
+
+    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+    }
+
     rearranged.push(images.get(images.len() / 2).unwrap());
     for image in rearranged {
         let y_offset = FAN_Y_OFFSETS[(image.index as isize - image_count as isize / 2).abs() as usize] * middle_h as f32;
         overlay(&mut result, &image.image, image.x_offset as i64, y_offset as i64);
+
+        if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+            return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+        }
     }
 
+    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+    }
 
     Ok(result.into())
 }
