@@ -18,4 +18,6 @@ cargo build --release
 ## TODO
 - Rendering card fan - fix card positioning, test with random frames
 - Saving rendered card to drive
+
+## SOON™
 - Rendering postcards
