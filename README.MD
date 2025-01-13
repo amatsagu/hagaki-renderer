@@ -20,4 +20,4 @@ cargo build --release
 - Saving rendered card to drive
 
 ## SOON™
-- Rendering postcards
+- Rendering profiles/postcards
