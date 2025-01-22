@@ -1,6 +1,6 @@
-use std::{collections::HashMap, path::Path, sync::Arc, time::Instant};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 
-use crate::{config::{CDN_PATH, DEFAULT_DYE_COLOR, FAN_Y_OFFSETS, RENDER_TIMEOUT}, models::RenderRequestData};
+use crate::{config::{CDN_CARD_IMAGES_PATH, CDN_CHARACTER_IMAGES_PATH, CDN_FRAMES_PATH, FAN_CARD_ANGLE, FAN_CIRCLE_CENTER_DISTANCE, RENDER_TIMEOUT}, models::CardRenderRequestData};
 use image::{imageops::overlay, load_from_memory, DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageReader, Pixel, Rgba};
 use imageproc::geometric_transformations::{rotate_about_center, Interpolation};
 
@@ -8,10 +8,10 @@ use rayon::prelude::*;
 
 pub fn load_frames() -> HashMap<String, DynamicImage> {
     let mut frames = HashMap::new();
-    let path = CDN_PATH.to_owned() + "/private/frame";
-    let path = Path::new(&path);
+    // let path = CDN_FRAMES_PATH;
+    // let path = Path::new(&path);
     // println!("{}", path.canonicalize().unwrap().to_str().unwrap());
-    for entry in std::fs::read_dir(path).unwrap() {
+    for entry in std::fs::read_dir(CDN_FRAMES_PATH).unwrap() {
 
         let entry = entry.unwrap();
         let path = entry.path();
@@ -31,12 +31,16 @@ pub fn load_frames() -> HashMap<String, DynamicImage> {
     frames
 }
 
-pub fn render_card(data: RenderRequestData, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
-    let image_path = if let Some(true) = data.custom_image {
-        format!("{}/public/custom-character/{}.png", CDN_PATH, data.id)
-    } else {
-        format!("{}/public/character/{}.png", CDN_PATH, data.id)
-    };
+pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
+
+    if data.target_card {
+        return ImageReader::open(format!("{}/{}.png", CDN_CARD_IMAGES_PATH, data.id))
+            .map_err(|_| format!("Custom card with id {} not found.", data.id))
+            .map(|img| img.decode().unwrap());
+    }
+
+    let image_path = format!("{}/{}.png", CDN_CHARACTER_IMAGES_PATH, data.id);
+
     // let character_image_buffer = tokio::fs::read(image_path).await.unwrap();
     // let character_image = load_from_memory(&character_image_buffer).unwrap();
 
@@ -51,19 +55,16 @@ pub fn render_card(data: RenderRequestData, frames: &Arc<HashMap<String, Dynamic
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
         return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
     }
+    let frame = data.frame_type.to_string();
 
-    let (mask, decoration) = if let Some(frame) = data.frame {
-        if let Some(true) = data.glow {
-            (frames.get(&format!("{}-glow-mask", frame.to_string())), frames.get(&format!("{}-glow-static", frame.to_string())))
-        } else {
-            (frames.get(&format!("{}-mask", frame.to_string())), frames.get(&format!("{}-static", frame.to_string())))
-        }
+    let (mask, decoration) = if data.glow {
+        (frames.get(&format!("{}-glow-mask", frame)), frames.get(&format!("{}-glow-static", frame)))
     } else {
-        (None, None)
+        (frames.get(&format!("{}-mask", frame)), frames.get(&format!("{}-static", frame)))
     };
 
     if mask.is_none() {
-        return Ok(character_image)
+        return Err(format!("Frame {} not found", frame));
     }
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
@@ -85,8 +86,7 @@ pub fn render_card(data: RenderRequestData, frames: &Arc<HashMap<String, Dynamic
     }
     // overlay(&mut result, &character_image, x as i64, y as i64);
 
-    let dye = data.dye.unwrap_or_else(|| DEFAULT_DYE_COLOR);
-    let frame_color = image::Rgb::from([dye >> 16 & 0xFF, dye >> 8 & 0xFF, dye & 0xFF]);
+    let frame_color = image::Rgb::from([data.dye >> 16 & 0xFF, data.dye >> 8 & 0xFF, data.dye & 0xFF]);
 
     result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
         let mask_pixel = mask.get_pixel(x, y);
@@ -160,17 +160,33 @@ fn rotate_image(image: DynamicImage, angle: f32) -> DynamicImage {
 
 struct IndexedImage {
     image: DynamicImage,
-    x_offset: u32,
-    index: usize
+    center_offset: Position
 }
 
-pub fn render_fan(data: Vec<RenderRequestData>, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
+#[derive(Debug, Default, Clone, Copy)]
+struct Position {
+    x: f32,
+    y: f32,
+    angle: f32
+}
+
+pub fn render_fan(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
     let mut images = Vec::new();
     let image_count = data.len();
-    let mut x_offset = 0;
+
+    let mut positions = vec![Position::default(); image_count];
+
+    for (i, card) in positions.iter_mut().enumerate() {
+        let position_index = i as f32 - image_count as f32 / 2.0 + 0.5;
+        let angle = (FAN_CARD_ANGLE * position_index).to_radians();
+        card.x = FAN_CIRCLE_CENTER_DISTANCE * angle.sin();
+        card.y = (FAN_CIRCLE_CENTER_DISTANCE * angle.cos() - FAN_CIRCLE_CENTER_DISTANCE).abs();
+        card.angle = angle;
+        // println!("{}: {}\t{}x{}", i, angle.to_degrees().round() as i32, card.x, card.y);
+    }
 
     for (i, card) in data.iter().enumerate() {
-        let image = match render_card(card.clone(), &frames, start_time) {
+        let mut image = match render_card(&card.clone(), &frames, start_time) {
             Ok(image) => image,
             Err(e) => return Err(e),
         };
@@ -179,40 +195,70 @@ pub fn render_fan(data: Vec<RenderRequestData>, frames: &Arc<HashMap<String, Dyn
             return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
         }
 
-        let image = rotate_image(image, 5.0 * (i as isize - image_count as isize / 2) as f32);
-        let offset = (image.width() as f32 * 0.6).ceil() as u32;
+        let mut rotation_angle = positions[i].angle.to_degrees().round();
+
+        if rotation_angle > 45.0 && rotation_angle < 135.0 {
+            rotation_angle = rotation_angle - 90.0;
+            image = image.rotate90();
+        }
+
+        if rotation_angle < -45.0 && rotation_angle > -135.0 {
+            rotation_angle = rotation_angle + 90.0;
+            image = image.rotate270();
+        }
+
+        let image = rotate_image(image, rotation_angle);
         images.push(IndexedImage {
             image,
-            x_offset,
-            index: i
+            center_offset: positions[i]
         });
-        x_offset += offset;
     }
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
         return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
     }
     
-    let middle_h = images[images.len() / 2].image.height();
-    let x = images.iter().enumerate().map(|(i, img)| {(img.image.width() as f32 * if i == 0 {1.0} else {0.6}) as u32}).sum();
-    let y = images.iter().map(|img| img.image.height()).max().unwrap() + (FAN_Y_OFFSETS[image_count / 2] * middle_h as f32) as u32;
+    let center_height = images[image_count / 2].image.height() / 2;
+    let x = {
+        let mut x = images.iter().map(|image| image.center_offset.x as u32).max().unwrap();
+        x *= 2;
+        x += images.iter().max_by(|a, b| a.center_offset.x.partial_cmp(&b.center_offset.x).unwrap()).unwrap().image.width() / 2;
+        x += images.iter().min_by(|a, b| a.center_offset.x.partial_cmp(&b.center_offset.x).unwrap()).unwrap().image.width() / 2;
+        x
+    };
+
+    let y = {
+        let mut y = center_height;
+        y += images[0].image.height().max(images[image_count - 1].image.height()) / 2;
+        y += images[0].center_offset.y.abs().ceil() as u32;
+        y
+    };
 
     let mut result = ImageBuffer::new(x, y);
 
     let mut rearranged = Vec::new();
     for i in 0..images.len() / 2 {
-        rearranged.push(images.get(i).unwrap());
         rearranged.push(images.get(images.len() - i - 1).unwrap());
+        rearranged.push(images.get(i).unwrap());
     }
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
         return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
     }
 
-    rearranged.push(images.get(images.len() / 2).unwrap());
+    if images.len() % 2 == 1 {
+        rearranged.push(images.get(images.len() / 2).unwrap());
+    }
     for image in rearranged {
-        let y_offset = FAN_Y_OFFSETS[(image.index as isize - image_count as isize / 2).abs() as usize] * middle_h as f32;
-        overlay(&mut result, &image.image, image.x_offset as i64, y_offset as i64);
+        let x = (image.center_offset.x.ceil() as i64 + result.width() as i64 / 2) - image.image.width() as i64 / 2;
+        let y = (image.center_offset.y.ceil() as i64 + center_height as i64) - image.image.height() as i64 / 2;
+
+        // println!("{}: ({}, {})", image.index, x, y);
+
+        overlay(&mut result, &image.image, x, y);
+
+        // image.image.save(format!("fan-{}.png", image.index)).unwrap();
+
 
         if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
             return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
