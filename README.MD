@@ -29,6 +29,10 @@ server {
 }
 ```
 
+### API Routes
+`[ GET ]` /render/card/{hash64}
+`[ GET ]` /render/fan/{hash64}
+
 ### List of features
 - Rendering selected card
 - Rendering with selected frame
