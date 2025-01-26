@@ -1,4 +1,4 @@
-# Hagaki (Kikuri Card Game's custom asset renderer)
+# Hagaki (KCG's custom asset renderer)
 
 ### Building
 To build release binary use command
@@ -30,7 +30,7 @@ server {
 ```
 
 ### API Routes
-`[ GET ]` /render/card/{hash64}
+`[ GET ]` /render/card/{hash64} <br>
 `[ GET ]` /render/fan/{hash64}
 
 ### List of features
