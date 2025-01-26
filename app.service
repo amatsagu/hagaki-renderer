@@ -1,0 +1,18 @@
+[Unit]
+Description = Kikrui Card Game's card/profile rendering service
+Requires=network.target
+After = network.target
+
+[Service]
+Type = exec
+Restart = on-failure
+ExecStart = /home/ubuntu/hagaki/target/release/hagaki
+WorkingDirectory= /home/ubuntu/hagaki
+MemoryAccounting=true
+MemoryHigh=512M
+MemoryMax=768M
+RestartSec = 120
+TimeoutStartSec = infinity
+
+[Install]
+WantedBy = multi-user.target
