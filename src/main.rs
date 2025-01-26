@@ -19,7 +19,7 @@ async fn main() -> Result<(), std::io::Error> {
         .fallback(|| async { Response::builder().status(418).body(Body::empty()).unwrap() })
         .layer(Extension(frames));
 
-    let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let listener = TcpListener::bind(config::ADDRESS).await.unwrap();
 
     serve(listener, router).await
 }
