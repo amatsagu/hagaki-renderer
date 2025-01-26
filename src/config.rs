@@ -16,7 +16,7 @@ pub const CHARACTER_IMAGE_Y: u32 = 370;
 pub const CARD_MAX_X: u32 = 303;
 pub const CARD_MAX_Y: u32 = 428;
 pub const DEFAULT_DYE_COLOR: u32 = 8289918;
-pub const RENDER_TIMEOUT: f32 = 30.0;
+pub const RENDER_TIMEOUT: f32 = 60.0; // in seconds
 
 pub const FAN_CARD_ANGLE: f32 = 5.0;
 pub const FAN_CIRCLE_CENTER_DISTANCE: f32 = 2000.0;
