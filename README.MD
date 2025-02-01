@@ -30,9 +30,9 @@ server {
 ```
 
 ### API Routes
-`[ GET  ]` /render/card/{hash64} <br>
-`[ GET  ]` /render/fan/{hash64} <br>
-`[ POST ]` /render/{file_name}
+`[ GET    ]` /render/card/{hash64} <br>
+`[ GET    ]` /render/fan/{hash64} <br>
+`[ DELETE ]` /render/{file_name}
 
 ### List of features
 - Rendering selected card
