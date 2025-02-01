@@ -19,7 +19,7 @@ async fn main() -> Result<(), std::io::Error> {
             Router::new()
                 .route("/card/{hash}", get(handlers::render_card))
                 .route("/fan/{hash}", get(handlers::render_fan))
-                .route("/remove/{file_name}", delete(handlers::render_remove)),
+                .route("/{file_name}", delete(handlers::render_remove)),
         )
         .fallback(|| async { Response::builder().status(418).body(Body::empty()).unwrap() })
         .layer(Extension(frames));
