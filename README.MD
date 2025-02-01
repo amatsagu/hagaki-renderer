@@ -30,8 +30,9 @@ server {
 ```
 
 ### API Routes
-`[ GET ]` /render/card/{hash64} <br>
-`[ GET ]` /render/fan/{hash64}
+`[ GET  ]` /render/card/{hash64} <br>
+`[ GET  ]` /render/fan/{hash64} <br>
+`[ POST ]` /render/{file_name}
 
 ### List of features
 - Rendering selected card
@@ -43,6 +44,7 @@ server {
 - Paralellized card generation
 - Saving rendered card/fan to drive
 - Serving saved card and fan from drive
+- Removing old/outdated render (protected operation with auth token in header)
 
 ### Planned features
 - None
