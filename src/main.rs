@@ -17,9 +17,9 @@ async fn main() -> Result<(), std::io::Error> {
         .nest(
             "/render",
             Router::new()
-                .route("/card/:hash", get(handlers::render_card))
-                .route("/fan/:hash", get(handlers::render_fan))
-                .route("/remove/:file_name", post(handlers::render_remove)),
+                .route("/card/{hash}", get(handlers::render_card))
+                .route("/fan/{hash}", get(handlers::render_fan))
+                .route("/remove/{file_name}", post(handlers::render_remove)),
         )
         .fallback(|| async { Response::builder().status(418).body(Body::empty()).unwrap() })
         .layer(Extension(frames));
