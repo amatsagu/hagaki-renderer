@@ -7,7 +7,7 @@ use std::io::{BufWriter, Cursor};
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::config::{CDN_CARD_IMAGES_PATH, RENDER_TIMEOUT};
+use crate::config::{CDN_RENDERS_PATH, RENDER_TIMEOUT};
 use crate::models::FanRenderRequestData;
 use crate::utils;
 
@@ -32,7 +32,7 @@ pub async fn render_fan(
     }
     
     if let Some(save_name) = decoded.save_name.clone() {
-        match tokio::fs::File::open(format!("{}/{}", CDN_CARD_IMAGES_PATH, save_name)).await {
+        match tokio::fs::File::open(format!("{}/{}", CDN_RENDERS_PATH, save_name)).await {
             Ok(mut file) => {
                 let mut buff = Vec::new();
                 file.read_to_end(&mut buff).await.unwrap();
@@ -67,7 +67,7 @@ pub async fn render_fan(
     let inner = buffer.into_inner().unwrap().into_inner();
 
     if let Some(save_name) = decoded.save_name.clone() {
-        let location = format!("{}/{}", CDN_CARD_IMAGES_PATH, save_name);
+        let location = format!("{}/{}", CDN_RENDERS_PATH, save_name);
         match tokio::fs::File::create(location).await {
             Ok(mut file) => {
                 file.write_all(&inner).await.unwrap();
