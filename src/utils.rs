@@ -33,13 +33,13 @@ pub fn load_frames() -> HashMap<String, DynamicImage> {
 
 pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
 
-    if data.target_card {
-        return ImageReader::open(format!("{}/{}.png", CDN_CARD_IMAGES_PATH, data.id))
-            .map_err(|_| format!("Custom card with id {} not found.", data.id))
-            .map(|img| img.decode().unwrap());
-    }
+    // if data.target_card {
+    //     return ImageReader::open(format!("{}/{}.png", CDN_CARD_IMAGES_PATH, data.id))
+    //         .map_err(|_| format!("Custom card with id {} not found.", data.id))
+    //         .map(|img| img.decode().unwrap());
+    // }
 
-    let image_path = format!("{}/{}.png", CDN_CHARACTER_IMAGES_PATH, data.id);
+    let image_path = format!("{}/{}.png", if data.target_card { CDN_CARD_IMAGES_PATH } else { CDN_CHARACTER_IMAGES_PATH }, data.id);
 
     // let character_image_buffer = tokio::fs::read(image_path).await.unwrap();
     // let character_image = load_from_memory(&character_image_buffer).unwrap();
