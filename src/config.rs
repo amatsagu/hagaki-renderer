@@ -6,17 +6,17 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 pub const ADDRESS: &str = "127.0.0.1:8899";
 pub const AUTH_TOKEN: &str = "a1fe0d2d2469bb472016d667be975b51";
 
-pub const CDN_PATH: &str = "../cdn";
+pub const CDN_PATH: &str = "../cdn";        // 💀 NEVER USED
 pub const CDN_FRAMES_PATH: &str = "../cdn/private/frame";
 pub const CDN_CHARACTER_IMAGES_PATH: &str = "../cdn/public/character";
-pub const CDN_CARD_IMAGES_PATH: &str = "../cdn/private/custom-card"; // W większości pusty, zawiera tylko custom obrazki
-pub const CDN_RENDERS_PATH: &str = "../cdn/public/render"; // I tutaj mogą być różne rzeczy, nie tylko render kart ale w przyszłości i inne rzeczy, dlatego custom name w payload
+pub const CDN_CARD_IMAGES_PATH: &str = "../cdn/private/custom-card"; // constains player custom cart art (end game customization)
+pub const CDN_RENDERS_PATH: &str = "../cdn/public/render"; // generic path that contains all sorts finished render files used for cdn caching
 
-pub const CHARACTER_IMAGE_X: u32 = 245;
-pub const CHARACTER_IMAGE_Y: u32 = 370;
-pub const CARD_MAX_X: u32 = 303;
-pub const CARD_MAX_Y: u32 = 428;
-pub const DEFAULT_DYE_COLOR: u32 = 8289918;
+pub const CHARACTER_IMAGE_X: u32 = 245;     // 💀 NEVER USED
+pub const CHARACTER_IMAGE_Y: u32 = 370;     // 💀 NEVER USED
+pub const CARD_MAX_X: u32 = 303;            // 💀 NEVER USED
+pub const CARD_MAX_Y: u32 = 428;            // 💀 NEVER USED
+pub const DEFAULT_DYE_COLOR: u32 = 8289918; // 💀 NEVER USED
 pub const RENDER_TIMEOUT: f32 = 10.0; // in seconds
 
 pub const FAN_CARD_ANGLE: f32 = 5.0;
