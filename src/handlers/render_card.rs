@@ -79,7 +79,7 @@ pub async fn render_card(
     
     Response::builder()
         .header("X-Source", "rendered on request")
-        .header("X-Processing-Time", (start.elapsed().as_nanos() as f64 / 1_000_000.0).to_string())
+        .header("X-Processing-Time", (start.elapsed().as_nanos() as f64 / 1_000_000.0).to_string() + "ms")
         .header("Content-Type", "image/png")
         .body(Body::from(inner))
         .unwrap()
