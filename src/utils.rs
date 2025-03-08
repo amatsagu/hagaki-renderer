@@ -86,21 +86,31 @@ pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, Dy
     }
     // overlay(&mut result, &character_image, x as i64, y as i64);
 
-    let frame_color = image::Rgb::from([data.dye >> 16 & 0xFF, data.dye >> 8 & 0xFF, data.dye & 0xFF]);
-
-    result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
-        let mask_pixel = mask.get_pixel(x, y);
-        if mask_pixel[3] == 0 {
-            return
-        }
-        let mask = mask_pixel[0] as f32 / 255.0;
-        p.blend(&image::Rgba::from([
-            (frame_color.0[0] as f32 * mask) as u8, 
-            (frame_color.0[1] as f32 * mask) as u8, 
-            (frame_color.0[2] as f32 * mask) as u8, 
-            mask_pixel[3]
-        ]));
-    });
+    if data.dye == 0 {
+        result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
+            let mask_pixel = mask.get_pixel(x, y);
+            if mask_pixel[3] == 0 {
+                return
+            }
+            p.blend(&mask_pixel);
+        });
+    } else {
+        let frame_color = image::Rgb::from([data.dye >> 16 & 0xFF, data.dye >> 8 & 0xFF, data.dye & 0xFF]);
+    
+        result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
+            let mask_pixel = mask.get_pixel(x, y);
+            if mask_pixel[3] == 0 {
+                return
+            }
+            let mask = mask_pixel[0] as f32 / 255.0;
+            p.blend(&image::Rgba::from([
+                (frame_color.0[0] as f32 * mask) as u8, 
+                (frame_color.0[1] as f32 * mask) as u8, 
+                (frame_color.0[2] as f32 * mask) as u8, 
+                mask_pixel[3]
+            ]));
+        });
+    }
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
         return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
