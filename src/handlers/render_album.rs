@@ -12,7 +12,7 @@ use crate::models::FanRenderRequestData;
 use crate::utils;
 
 #[axum_macros::debug_handler]
-pub async fn render_fan(
+pub async fn render_album(
     Path(hash): Path<String>, 
     Extension(frames): Extension<Arc<HashMap<String, DynamicImage>>>
 ) -> Response<Body> {
@@ -20,7 +20,7 @@ pub async fn render_fan(
 
     let bytes = match Engine.decode(hash) {
         Ok(bytes) => bytes,
-        Err(_) => return Response::builder().status(400).body(Body::from("Invalid fan hash")).unwrap(),
+        Err(_) => return Response::builder().status(400).body(Body::from("Invalid album hash")).unwrap(),
     };
     let decoded: FanRenderRequestData = match serde_json::from_slice(&bytes) {
         Ok(decoded) => decoded,
@@ -46,7 +46,7 @@ pub async fn render_fan(
         }
     }
 
-    let image = match utils::render_fan(decoded.cards, &frames, &start) {
+    let image = match utils::render_album(decoded.cards, &frames, &start) {
         Ok(image) => image,
         Err(e) => return Response::builder().status(500).body(Body::from(e)).unwrap(),
     };

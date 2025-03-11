@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
-use crate::{config::{CDN_CARD_IMAGES_PATH, CDN_CHARACTER_IMAGES_PATH, CDN_FRAMES_PATH, FAN_CARD_ANGLE, FAN_CIRCLE_CENTER_DISTANCE, RENDER_TIMEOUT}, models::CardRenderRequestData};
+use crate::{config::{ALBUM_CARD_PADDING, CDN_CARD_IMAGES_PATH, CDN_CHARACTER_IMAGES_PATH, CDN_FRAMES_PATH, FAN_CARD_ANGLE, FAN_CIRCLE_CENTER_DISTANCE, RENDER_TIMEOUT}, models::CardRenderRequestData};
 use image::{imageops::overlay, load_from_memory, DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageReader, Pixel, Rgba};
 use imageproc::geometric_transformations::{rotate_about_center, Interpolation};
 
@@ -86,21 +86,31 @@ pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, Dy
     }
     // overlay(&mut result, &character_image, x as i64, y as i64);
 
-    let frame_color = image::Rgb::from([data.dye >> 16 & 0xFF, data.dye >> 8 & 0xFF, data.dye & 0xFF]);
-
-    result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
-        let mask_pixel = mask.get_pixel(x, y);
-        if mask_pixel[3] == 0 {
-            return
-        }
-        let mask = mask_pixel[0] as f32 / 255.0;
-        p.blend(&image::Rgba::from([
-            (frame_color.0[0] as f32 * mask) as u8, 
-            (frame_color.0[1] as f32 * mask) as u8, 
-            (frame_color.0[2] as f32 * mask) as u8, 
-            mask_pixel[3]
-        ]));
-    });
+    if data.dye == 0 {
+        result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
+            let mask_pixel = mask.get_pixel(x, y);
+            if mask_pixel[3] == 0 {
+                return
+            }
+            p.blend(&mask_pixel);
+        });
+    } else {
+        let frame_color = image::Rgb::from([data.dye >> 16 & 0xFF, data.dye >> 8 & 0xFF, data.dye & 0xFF]);
+    
+        result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
+            let mask_pixel = mask.get_pixel(x, y);
+            if mask_pixel[3] == 0 {
+                return
+            }
+            let mask = mask_pixel[0] as f32 / 255.0;
+            p.blend(&image::Rgba::from([
+                (frame_color.0[0] as f32 * mask) as u8, 
+                (frame_color.0[1] as f32 * mask) as u8, 
+                (frame_color.0[2] as f32 * mask) as u8, 
+                mask_pixel[3]
+            ]));
+        });
+    }
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
         return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
@@ -256,6 +266,78 @@ pub fn render_fan(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<String,
         // println!("{}: ({}, {})", image.index, x, y);
 
         overlay(&mut result, &image.image, x, y);
+
+        // image.image.save(format!("fan-{}.png", image.index)).unwrap();
+
+
+        if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+            return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+        }
+    }
+
+    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+    }
+
+    Ok(result.into())
+}
+
+pub fn render_album(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
+    let mut images = Vec::new();
+    let image_count = data.len();
+
+    let mut max_width = 0;
+    let mut max_height = 0;
+
+    for card in data {
+        let image = match render_card(&card.clone(), &frames, start_time) {
+            Ok(image) => image,
+            Err(e) => return Err(e),
+        };
+
+        if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+            return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+        }
+
+        max_width = max_width.max(image.width());
+        max_height = max_height.max(image.height());
+
+        images.push(image);
+    }
+
+    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+    }
+    
+    let row_items = (image_count as f64).sqrt().ceil() as usize;
+    let column_items = if row_items * row_items == image_count {
+        row_items
+    } else {
+        image_count / row_items + 1
+    };
+
+    let x = row_items as u32 * (max_width + ALBUM_CARD_PADDING);
+    let y = column_items as u32 * (max_height + ALBUM_CARD_PADDING);
+    
+    let mut result = ImageBuffer::new(x, y);
+
+    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+    }
+
+    for (i, image) in images.iter().enumerate() {
+        let mut x = ((max_width + ALBUM_CARD_PADDING) as f32 * ((i % row_items) as f32 + 0.5)) as i64 - (image.width() / 2) as i64;
+        let y = ((max_height + ALBUM_CARD_PADDING) as f32 * ((i / row_items) as f32 + 0.5)) as i64 - (image.height() / 2) as i64;
+
+        if i / row_items == column_items - 1 {
+            if row_items * column_items != image_count {
+                x += ((max_width + ALBUM_CARD_PADDING) as f32 * (row_items * column_items - image_count) as f32 / 2.0) as i64;
+            }
+        }
+
+        // println!("{}: ({}, {})", image.index, x, y);
+
+        overlay(&mut result, image, x, y);
 
         // image.image.save(format!("fan-{}.png", image.index)).unwrap();
 

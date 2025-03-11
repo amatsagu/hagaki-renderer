@@ -22,6 +22,8 @@ pub const RENDER_TIMEOUT: f32 = 10.0; // in seconds
 pub const FAN_CARD_ANGLE: f32 = 5.0;
 pub const FAN_CIRCLE_CENTER_DISTANCE: f32 = 2000.0;
 
+pub const ALBUM_CARD_PADDING: u32 = 10;
+
 pub const FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::new(|| {
     HashMap::from([(FrameType::DefaultFrame, FrameDetails {
         name: "default",
