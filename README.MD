@@ -41,7 +41,8 @@ server {
 - Rendering dyed frame
 - Rendering frame with static decorations
 - Caching frames to increase performance by decreasing disk I/O operations
-- Rendering card fan
+- Rendering fan of cards
+- Rendering album with cards
 - Paralellized card generation
 - Saving rendered card/fan to drive
 - Serving saved card and fan from drive
