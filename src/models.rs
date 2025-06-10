@@ -5,9 +5,10 @@ use crate::config::FrameType;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CardRenderRequestData {
     pub id: u32,
-    pub target_card: bool, // Jeśli jest false to <id> jest postaci, jeśli true to id/kod konkretnej karty
+    pub variant: u8,
+    pub target_card: Option<bool>, // Jeśli jest false to <id> jest postaci, jeśli true to id/kod konkretnej karty
     pub dye: u32,
-    pub glow: bool,
+    pub kindled: bool,
     pub frame_type: FrameType,
     pub offset_x: Option<i32>,
     pub offset_y: Option<i32>,
