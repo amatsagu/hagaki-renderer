@@ -31,6 +31,36 @@ pub fn load_frames() -> HashMap<String, DynamicImage> {
     frames
 }
 
+fn rgb2hue(r: u32, g: u32, b: u32) -> i32 {
+    let r = r as f32 / 255.0;
+    let g = g as f32 / 255.0;
+    let b = b as f32 / 255.0;
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let mut hue = 0.0;
+    if max == min {
+        hue = 0.0;
+    } else if max == r {
+        hue = 60.0 * (g - b) / (max - min);
+        if hue < 0.0 {
+            hue += 360.0;
+        }
+    } else if max == g {
+        hue = 60.0 * (b - r) / (max - min) + 120.0;
+        if hue < 0.0 {
+            hue += 360.0;
+        }
+    } else if max == b {
+        hue = 60.0 * (r - g) / (max - min) + 240.0;
+        if hue < 0.0 {
+            hue += 360.0;
+        }
+    }
+    println!("{}", hue);
+    hue.round() as i32
+
+}
+
 pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
 
     // if data.target_card {
@@ -39,7 +69,11 @@ pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, Dy
     //         .map(|img| img.decode().unwrap());
     // }
 
-    let image_path = format!("{}/{}.png", if data.target_card { CDN_CARD_IMAGES_PATH } else { CDN_CHARACTER_IMAGES_PATH }, data.id);
+    let image_path = if data.variant == 0 {
+        format!("{}/{}.png", CDN_CHARACTER_IMAGES_PATH, data.id)
+    } else {
+        format!("{}/{}/{}{}.png", CDN_CHARACTER_IMAGES_PATH, data.id, if data.variant < 10 {'u'} else {'x'}, data.variant)
+    };
 
     // let character_image_buffer = tokio::fs::read(image_path).await.unwrap();
     // let character_image = load_from_memory(&character_image_buffer).unwrap();
@@ -57,10 +91,10 @@ pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, Dy
     }
     let frame = data.frame_type.to_string();
 
-    let (mask, decoration) = if data.glow {
-        (frames.get(&format!("{}-glow-mask", frame)), frames.get(&format!("{}-glow-static", frame)))
+    let (mask, decoration) = if data.kindled {
+        (frames.get(&format!("{}-kindled-color", frame)), frames.get(&format!("{}-kindled-static", frame)))
     } else {
-        (frames.get(&format!("{}-mask", frame)), frames.get(&format!("{}-static", frame)))
+        (frames.get(&format!("{}-color", frame)), frames.get(&format!("{}-static", frame)))
     };
 
     if mask.is_none() {
@@ -71,60 +105,27 @@ pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, Dy
         return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
     }
 
-    let mask = mask.unwrap();
+    let mut hue = rgb2hue(data.dye >> 16 & 0xFF, data.dye >> 8 & 0xFF, data.dye & 0xFF);
+    if hue < 0 {
+        hue += 360;
+    }
+    println!("Hue: {}", hue);
+    let mask = mask.unwrap().huerotate(hue);
+
+    mask.save("test.png").unwrap();
 
     let mut result = ImageBuffer::new(mask.width(), mask.height());
-    let x = (mask.width() - character_image.width()) / 2 + data.offset_x.unwrap_or(0) as u32;
-    let y = (mask.height() - character_image.height()) / 2 + data.offset_y.unwrap_or(0) as u32;
+    // let x = (mask.width() - character_image.width()) / 2 + data.offset_x.unwrap_or(0) as u32;
+    // let y = (mask.height() - character_image.height()) / 2 + data.offset_y.unwrap_or(0) as u32;
 
-    if let Err(_) = result.copy_from(&character_image, x, y) {
+    if let Err(_) = result.copy_from(&character_image, 0, 0) {
         return Err("Failed to copy character image to result image".to_string());
     };
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
         return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
     }
-    // overlay(&mut result, &character_image, x as i64, y as i64);
 
-    if data.dye == 0 {
-        result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
-            let mask_pixel = mask.get_pixel(x, y);
-            if mask_pixel[3] == 0 {
-                return
-            }
-            p.blend(&mask_pixel);
-        });
-    } else {
-        let frame_color = image::Rgb::from([data.dye >> 16 & 0xFF, data.dye >> 8 & 0xFF, data.dye & 0xFF]);
-    
-        result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
-            let mask_pixel = mask.get_pixel(x, y);
-            if mask_pixel[3] == 0 {
-                return
-            }
-            let mask = mask_pixel[0] as f32 / 255.0;
-            p.blend(&image::Rgba::from([
-                (frame_color.0[0] as f32 * mask) as u8, 
-                (frame_color.0[1] as f32 * mask) as u8, 
-                (frame_color.0[2] as f32 * mask) as u8, 
-                mask_pixel[3]
-            ]));
-        });
-    }
-
-    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
-    }
-
-    // for (x, y, pixel) in mask.pixels().filter(|(_, _, p)| p[3] != 0) {
-    //     let mask = pixel[0] as f32 / 255.0;
-    //     result.get_pixel_mut(x, y).blend(&image::Rgba::from([
-    //         (frame_color.0[0] as f32 * mask) as u8, 
-    //         (frame_color.0[1] as f32 * mask) as u8, 
-    //         (frame_color.0[2] as f32 * mask) as u8, 
-    //         pixel[3]
-    //     ]));
-    // }
 
     if let Some(decoration) = decoration {
         // for (x, y, pixel) in decoration.pixels().filter(|(_, _, p)| p[3] != 0) {
@@ -143,6 +144,47 @@ pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, Dy
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
         return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
     }
+    // overlay(&mut result, &character_image, x as i64, y as i64);
+
+    // if data.dye == 0 {
+    result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
+        let mask_pixel = mask.get_pixel(x, y);
+        if mask_pixel[3] == 0 {
+            return
+        }
+        p.blend(&mask_pixel);
+    });
+    // } else {
+    //     let frame_color = image::Rgb::from([data.dye >> 16 & 0xFF, data.dye >> 8 & 0xFF, data.dye & 0xFF]);
+    
+    //     result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
+    //         let mask_pixel = mask.get_pixel(x, y);
+    //         if mask_pixel[3] == 0 {
+    //             return
+    //         }
+    //         let mask = mask_pixel[0] as f32 / 255.0;
+    //         p.blend(&image::Rgba::from([
+    //             (frame_color.0[0] as f32 * mask) as u8, 
+    //             (frame_color.0[1] as f32 * mask) as u8, 
+    //             (frame_color.0[2] as f32 * mask) as u8, 
+    //             mask_pixel[3]
+    //         ]));
+    //     });
+    // }
+
+    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
+        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+    }
+
+    // for (x, y, pixel) in mask.pixels().filter(|(_, _, p)| p[3] != 0) {
+    //     let mask = pixel[0] as f32 / 255.0;
+    //     result.get_pixel_mut(x, y).blend(&image::Rgba::from([
+    //         (frame_color.0[0] as f32 * mask) as u8, 
+    //         (frame_color.0[1] as f32 * mask) as u8, 
+    //         (frame_color.0[2] as f32 * mask) as u8, 
+    //         pixel[3]
+    //     ]));
+    // }
 
     Ok(result.into())
 }
