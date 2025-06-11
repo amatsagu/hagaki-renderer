@@ -32,7 +32,6 @@ server {
 ### API Routes
 `[ GET    ]` /render/card/{hash64} <br>
 `[ GET    ]` /render/fan/{hash64} <br>
-`[ GET    ]` /render/album/{hash64} <br>
 `[ DELETE ]` /render/{file_name}
 
 ### List of features
@@ -41,8 +40,7 @@ server {
 - Rendering dyed frame
 - Rendering frame with static decorations
 - Caching frames to increase performance by decreasing disk I/O operations
-- Rendering fan of cards
-- Rendering album with cards
+- Rendering card fan
 - Paralellized card generation
 - Saving rendered card/fan to drive
 - Serving saved card and fan from drive

@@ -12,7 +12,7 @@ parser = ArgumentParser(
     description='Benchmark for hagaki service',
 )
 parser.add_argument(
-    "-a", "--address", type=str, default="127.0.0.1:8899",
+    "-a", "--address", type=str, default="127.0.0.1:8-8-",
     help='Address of hagaki service'
 )
 parser.add_argument(

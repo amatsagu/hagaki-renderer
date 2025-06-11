@@ -1,18 +1,18 @@
 use axum::{body::Body, extract::Path, response::Response, Extension};
 use base64::{engine::general_purpose::STANDARD_NO_PAD as Engine, Engine as _};
 use image::DynamicImage;
-use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use std::collections::HashMap;
 use std::io::{BufWriter, Cursor};
 use std::sync::Arc;
 use std::time::Instant;
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
 use crate::config::{CDN_RENDERS_PATH, RENDER_TIMEOUT};
-use crate::models::FanRenderRequestData;
-use crate::utils;
+use crate::models::CardRenderRequestData;
+use crate::utils::render_card;
 
 #[axum_macros::debug_handler]
-pub async fn render_fan(
+pub async fn handle_card_request(
     Path(hash): Path<String>, 
     Extension(frames): Extension<Arc<HashMap<String, DynamicImage>>>
 ) -> Response<Body> {
@@ -20,9 +20,9 @@ pub async fn render_fan(
 
     let bytes = match Engine.decode(hash) {
         Ok(bytes) => bytes,
-        Err(_) => return Response::builder().status(400).body(Body::from("Invalid fan hash")).unwrap(),
+        Err(_) => return Response::builder().status(400).body(Body::from("Invalid card hash")).unwrap(),
     };
-    let decoded: FanRenderRequestData = match serde_json::from_slice(&bytes) {
+    let decoded: CardRenderRequestData = match serde_json::from_slice(&bytes) {
         Ok(decoded) => decoded,
         Err(_) => return Response::builder().status(400).body(Body::from("Hash contains invalid data")).unwrap(),
     };
@@ -30,7 +30,7 @@ pub async fn render_fan(
     if start.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
         return Response::builder().status(503).body(Body::from("Render timeout")).unwrap();
     }
-    
+
     if let Some(save_name) = decoded.save_name.clone() {
         match tokio::fs::File::open(format!("{}/{}", CDN_RENDERS_PATH, save_name)).await {
             Ok(mut file) => {
@@ -46,7 +46,7 @@ pub async fn render_fan(
         }
     }
 
-    let image = match utils::render_fan(decoded.cards, &frames, &start) {
+    let image = match render_card(&decoded, &frames, &start) {
         Ok(image) => image,
         Err(e) => return Response::builder().status(500).body(Body::from(e)).unwrap(),
     };

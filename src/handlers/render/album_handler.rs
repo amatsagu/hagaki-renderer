@@ -9,10 +9,10 @@ use std::time::Instant;
 
 use crate::config::{CDN_RENDERS_PATH, RENDER_TIMEOUT};
 use crate::models::FanRenderRequestData;
-use crate::utils;
+use crate::utils::render_album;
 
 #[axum_macros::debug_handler]
-pub async fn render_album(
+pub async fn handle_card_album_request(
     Path(hash): Path<String>, 
     Extension(frames): Extension<Arc<HashMap<String, DynamicImage>>>
 ) -> Response<Body> {
@@ -46,7 +46,7 @@ pub async fn render_album(
         }
     }
 
-    let image = match utils::render_album(decoded.cards, &frames, &start) {
+    let image = match render_album(decoded.cards, &frames, &start) {
         Ok(image) => image,
         Err(e) => return Response::builder().status(500).body(Body::from(e)).unwrap(),
     };

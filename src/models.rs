@@ -6,7 +6,6 @@ use crate::config::FrameType;
 pub struct CardRenderRequestData {
     pub id: u32,
     pub variant: u8,
-    pub target_card: Option<bool>, // Jeśli jest false to <id> jest postaci, jeśli true to id/kod konkretnej karty
     pub dye: u32,
     pub kindled: bool,
     pub frame_type: FrameType,
