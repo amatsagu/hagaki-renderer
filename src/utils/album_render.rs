@@ -34,16 +34,14 @@ pub fn render_album(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<Strin
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
         return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
     }
-    
-    let row_items = (image_count as f64).sqrt().ceil() as usize;
-    let column_items = if row_items * row_items == image_count {
-        row_items
-    } else {
-        image_count / row_items + 1
-    };
 
-    let x = row_items as u32 * (max_width + ALBUM_CARD_PADDING);
-    let y = column_items as u32 * (max_height + ALBUM_CARD_PADDING);
+    let aspect_bias = 1.35;
+    let mut cols = ((aspect_bias * image_count as f32).sqrt()).ceil() as u32;
+    cols = cols.min(image_count as u32);
+    let rows = ((image_count as f32) / (cols as f32)).ceil() as u32;
+    
+    let x = cols * max_width + (cols + 1) * ALBUM_CARD_PADDING;
+    let y = rows * max_height + (rows + 1) * ALBUM_CARD_PADDING;
     
     let mut result = ImageBuffer::new(x, y);
 
@@ -52,29 +50,18 @@ pub fn render_album(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<Strin
     }
 
     for (i, image) in images.iter().enumerate() {
-        let mut x = ((max_width + ALBUM_CARD_PADDING) as f32 * ((i % row_items) as f32 + 0.5)) as i64 - (image.width() / 2) as i64;
-        let y = ((max_height + ALBUM_CARD_PADDING) as f32 * ((i / row_items) as f32 + 0.5)) as i64 - (image.height() / 2) as i64;
+        let idx = i as u32;
+        let col = idx % cols;
+        let row = idx / cols;
 
-        if i / row_items == column_items - 1 {
-            if row_items * column_items != image_count {
-                x += ((max_width + ALBUM_CARD_PADDING) as f32 * (row_items * column_items - image_count) as f32 / 2.0) as i64;
-            }
-        }
-
-        // println!("{}: ({}, {})", image.index, x, y);
+        let x = (ALBUM_CARD_PADDING + col * (max_width + ALBUM_CARD_PADDING)) as i64;
+        let y = (ALBUM_CARD_PADDING + row * (max_height + ALBUM_CARD_PADDING)) as i64;
 
         overlay(&mut result, image, x, y);
-
-        // image.image.save(format!("fan-{}.png", image.index)).unwrap();
-
 
         if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
             return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
         }
-    }
-
-    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
     }
 
     Ok(result.into())
