@@ -1,6 +1,9 @@
 build:
 	/home/ubuntu/.cargo/bin/cargo build --release
 
+run:
+	RUST_LOG=trace /home/ubuntu/hagaki/target/release/hagaki
+
 install-service:
 	chown ubuntu:ubuntu target/release/hagaki
 	cp "/home/ubuntu/hagaki/app.service" "/lib/systemd/system/hagaki.service"
