@@ -6,34 +6,29 @@ use crate::config::{ALBUM_CARD_PADDING, RENDER_TIMEOUT};
 use crate::models::CardRenderRequestData;
 use crate::utils::render_card;
 
-// use rayon::prelude::*;
+use rayon::prelude::*;
 
 pub fn render_album(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
-    let mut images = Vec::new();
     let image_count = data.len();
+    let images_results: Vec<Result<DynamicImage, String>> = data
+        .into_par_iter()
+        .map(|card| {
+            // Each render gets its own start_time clone
+            render_card(&card, frames, start_time)
+        })
+        .collect();
 
-    let mut max_width = 0;
-    let mut max_height = 0;
-
-    for card in data {
-        let image = match render_card(&card.clone(), &frames, start_time) {
-            Ok(image) => image,
+    let mut images = Vec::with_capacity(image_count);
+    for result in images_results {
+        match result {
+            Ok(image) => images.push(image),
             Err(e) => return Err(e),
-        };
-
-        if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-            return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
         }
-
-        max_width = max_width.max(image.width());
-        max_height = max_height.max(image.height());
-
-        images.push(image);
     }
 
-    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
-    }
+    let (max_width, max_height) = images.iter().fold((0, 0), |(w, h), img| {
+        (w.max(img.width()), h.max(img.height()))
+    });
 
     let aspect_bias = 1.35;
     let mut cols = ((aspect_bias * image_count as f32).sqrt()).ceil() as u32;
