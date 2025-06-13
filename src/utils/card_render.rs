@@ -93,9 +93,9 @@ fn recolor_mask(mask: &DynamicImage, dye: u32) -> ImageBuffer<Rgba<u8>, Vec<u8>>
     let dye_lab: Oklab = overlay_rgb.into_linear().into_color();
 
     // Precomputed constants
-    let blend_strength = 0.90;
+    let light_blend_strength = 0.5;  // blend 50% toward dye lightness
+    let blend_strength = 0.90; // blend 90% towards dye hue & saturation
     let inv_blend_strength = 1.0 - blend_strength;
-    let light_strength = 0.925; // Selected values to best match original preview img
     let chroma_boost_factor = 0.5;
     let max_chroma_squared = 1.0;
 
@@ -120,13 +120,13 @@ fn recolor_mask(mask: &DynamicImage, dye: u32) -> ImageBuffer<Rgba<u8>, Vec<u8>>
         let chroma_squared = final_a * final_a + final_b * final_b;
 
         if chroma_squared > max_chroma_squared {
-            let scale = max_chroma_squared / chroma_squared.sqrt(); // equals 1.0 / chroma
+            let scale = max_chroma_squared / chroma_squared.sqrt();
             final_a *= scale;
             final_b *= scale;
         }
 
         let final_lab = Oklab {
-            l: orig_lab.l * light_strength,
+            l: orig_lab.l * (1.0 - light_blend_strength) + dye_lab.l * light_blend_strength,
             a: final_a,
             b: final_b,
         };
