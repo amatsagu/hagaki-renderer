@@ -21,62 +21,69 @@ struct Position {
 }
 
 pub fn render_fan(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
-    let mut images = Vec::new();
     let image_count = data.len();
 
-    let mut positions = vec![Position::default(); image_count];
+    // Precompute positions (it's cheap, no need to parallelize)
+    let positions: Vec<Position> = (0..image_count)
+        .map(|i| {
+            let position_index = i as f32 - image_count as f32 / 2.0 + 0.5;
+            let angle = (FAN_CARD_ANGLE * position_index).to_radians();
+            Position {
+                x: FAN_CIRCLE_CENTER_DISTANCE * angle.sin(),
+                y: (FAN_CIRCLE_CENTER_DISTANCE * angle.cos() - FAN_CIRCLE_CENTER_DISTANCE).abs(),
+                angle,
+            }
+        })
+        .collect();
 
-    for (i, card) in positions.iter_mut().enumerate() {
-        let position_index = i as f32 - image_count as f32 / 2.0 + 0.5;
-        let angle = (FAN_CARD_ANGLE * position_index).to_radians();
-        card.x = FAN_CIRCLE_CENTER_DISTANCE * angle.sin();
-        card.y = (FAN_CIRCLE_CENTER_DISTANCE * angle.cos() - FAN_CIRCLE_CENTER_DISTANCE).abs();
-        card.angle = angle;
-        // println!("{}: {}\t{}x{}", i, angle.to_degrees().round() as i32, card.x, card.y);
-    }
+    // Parallel render + rotation
+    let images_results: Vec<_> = data
+        .into_par_iter()
+        .zip(positions.par_iter())
+        .map(|(card, pos)| {
+            let image = render_card(&card, frames, start_time)?;
 
-    for (i, card) in data.iter().enumerate() {
-        let mut image = match render_card(&card.clone(), &frames, start_time) {
-            Ok(image) => image,
+            let mut rotation_angle = pos.angle.to_degrees().round();
+            let mut image = image;
+
+            if rotation_angle > 45.0 && rotation_angle < 135.0 {
+                rotation_angle -= 90.0;
+                image = image.rotate90();
+            }
+            if rotation_angle < -45.0 && rotation_angle > -135.0 {
+                rotation_angle += 90.0;
+                image = image.rotate270();
+            }
+
+            let image = rotate_image(image, rotation_angle);
+            Ok(IndexedImage {
+                image,
+                center_offset: *pos,
+            })
+        })
+        .collect();
+
+    let mut images = Vec::with_capacity(image_count);
+    for result in images_results {
+        match result {
+            Ok(img) => images.push(img),
             Err(e) => return Err(e),
-        };
-
-        if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-            return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
         }
-
-        let mut rotation_angle = positions[i].angle.to_degrees().round();
-
-        if rotation_angle > 45.0 && rotation_angle < 135.0 {
-            rotation_angle = rotation_angle - 90.0;
-            image = image.rotate90();
-        }
-
-        if rotation_angle < -45.0 && rotation_angle > -135.0 {
-            rotation_angle = rotation_angle + 90.0;
-            image = image.rotate270();
-        }
-
-        let image = rotate_image(image, rotation_angle);
-        images.push(IndexedImage {
-            image,
-            center_offset: positions[i]
-        });
     }
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
         return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
     }
-    
+
+    // Calculate output image size
     let center_height = images[image_count / 2].image.height() / 2;
     let x = {
-        let mut x = images.iter().map(|image| image.center_offset.x as u32).max().unwrap();
+        let mut x = images.iter().map(|img| img.center_offset.x as u32).max().unwrap();
         x *= 2;
         x += images.iter().max_by(|a, b| a.center_offset.x.partial_cmp(&b.center_offset.x).unwrap()).unwrap().image.width() / 2;
         x += images.iter().min_by(|a, b| a.center_offset.x.partial_cmp(&b.center_offset.x).unwrap()).unwrap().image.width() / 2;
         x
     };
-
     let y = {
         let mut y = center_height;
         y += images[0].image.height().max(images[image_count - 1].image.height()) / 2;
@@ -86,37 +93,25 @@ pub fn render_fan(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<String,
 
     let mut result = ImageBuffer::new(x, y);
 
+    // Rearrange rendering order for overlapping stacking
     let mut rearranged = Vec::new();
     for i in 0..images.len() / 2 {
         rearranged.push(images.get(images.len() - i - 1).unwrap());
         rearranged.push(images.get(i).unwrap());
     }
-
-    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
-    }
-
     if images.len() % 2 == 1 {
         rearranged.push(images.get(images.len() / 2).unwrap());
     }
+
     for image in rearranged {
-        let x = (image.center_offset.x.ceil() as i64 + result.width() as i64 / 2) - image.image.width() as i64 / 2;
-        let y = (image.center_offset.y.ceil() as i64 + center_height as i64) - image.image.height() as i64 / 2;
+        let draw_x = (image.center_offset.x.ceil() as i64 + result.width() as i64 / 2) - image.image.width() as i64 / 2;
+        let draw_y = (image.center_offset.y.ceil() as i64 + center_height as i64) - image.image.height() as i64 / 2;
 
-        // println!("{}: ({}, {})", image.index, x, y);
-
-        overlay(&mut result, &image.image, x, y);
-
-        // image.image.save(format!("fan-{}.png", image.index)).unwrap();
-
+        overlay(&mut result, &image.image, draw_x, draw_y);
 
         if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
             return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
         }
-    }
-
-    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
     }
 
     Ok(result.into())
