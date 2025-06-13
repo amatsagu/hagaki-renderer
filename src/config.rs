@@ -14,7 +14,7 @@ pub const CDN_RENDERS_PATH: &str = "../asset/public/render";
 pub const RENDER_TIMEOUT: f32 = 10.0; // in seconds
 
 pub const FAN_CARD_ANGLE: f32 = 5.0;
-pub const FAN_CIRCLE_CENTER_DISTANCE: f32 = 2000.0;
+pub const FAN_CIRCLE_CENTER_DISTANCE: f32 = 4000.0;
 
 pub const ALBUM_CARD_PADDING: u32 = 10;
 
@@ -24,7 +24,7 @@ pub const FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::ne
             name: "default",
             static_model: true,
             color_model: true,
-            extendable: false, // ???
+            extendable: true, // whether can be kindled (has that improved version)
             width: 550,
             height: 800
         })
