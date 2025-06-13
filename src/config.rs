@@ -11,15 +11,23 @@ pub const CDN_CHARACTER_IMAGES_PATH: &str = "../asset/private/character";
 pub const CDN_CARD_IMAGES_PATH: &str = "../asset/private/custom-character-card";
 pub const CDN_RENDERS_PATH: &str = "../asset/public/render";
 
-pub const RENDER_TIMEOUT: f32 = 10.0; // in seconds
+pub const RENDER_TIMEOUT: f32 = 4.5; // in seconds
 
 pub const FAN_CARD_ANGLE: f32 = 5.0;
-pub const FAN_CIRCLE_CENTER_DISTANCE: f32 = 4000.0;
+pub const FAN_CIRCLE_CENTER_DISTANCE: f32 = 3000.0;
 
 pub const ALBUM_CARD_PADDING: u32 = 10;
 
 pub const FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::new(|| {
     HashMap::from([
+        (FrameType::MinimalBorderFrame, FrameDetails {
+            name: "minimal-border",
+            static_model: false,
+            color_model: true,
+            extendable: false,
+            width: 550,
+            height: 800
+        }),
         (FrameType::DefaultFrame, FrameDetails {
             name: "default",
             static_model: true,
@@ -34,12 +42,14 @@ pub const FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::ne
 #[repr(u8)]
 #[derive(Eq, PartialEq, Hash, Serialize_repr, Deserialize_repr, Debug, Clone)]
 pub enum FrameType {
-    DefaultFrame = 0
+    MinimalBorderFrame = 0,
+    DefaultFrame = 1,
 }
 
 impl ToString for FrameType {
     fn to_string(&self) -> String {
         match self {
+            FrameType::MinimalBorderFrame => "minimal-border".to_string(),
             FrameType::DefaultFrame => "default".to_string(),
             // FrameType::BetaFrame => "beta".to_string(),
             // FrameType::EdoHiganFrame => "edo-higan".to_string()
