@@ -72,7 +72,7 @@ pub fn render_fan(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<String,
     }
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+        return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
     }
 
     // Calculate output image size
@@ -110,7 +110,7 @@ pub fn render_fan(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<String,
         overlay(&mut result, &image.image, draw_x, draw_y);
 
         if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-            return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+            return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
         }
     }
 

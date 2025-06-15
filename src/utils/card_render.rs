@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc, time::Instant};
 use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageReader, Pixel, Rgba};
+use log::warn;
 use palette::{Srgb, Oklab, IntoColor};
 
 use crate::{config::{CDN_CHARACTER_IMAGES_PATH, RENDER_TIMEOUT}, models::CardRenderRequestData};
@@ -16,13 +17,19 @@ pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, Dy
     let character_image = match ImageReader::open(&image_path) {
         Ok(img) => match img.decode() {
             Ok(img) => img,
-            Err(_) => return Err(format!("Failed to decode {}. Check if file is a valid image", image_path)),
+            Err(e) => {
+                warn!("Failed render due to likely damaged character image on path: {}. Received error: {}", image_path, e);
+                return Err(format!("failed request - failed to decode main image asset."))
+            },
         }
-        Err(_) => return Err(format!("Card with id {} not found.", data.id)),
+        Err(e) => {
+            warn!("Failed render due to missing character image on path: {}. Received error: {}", image_path, e);
+            return Err(format!("failed request - requested card could not be rendered due to missing main image asset."));
+        },
     };
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+        return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
     }
     let frame = data.frame_type.to_string();
 
@@ -33,23 +40,22 @@ pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, Dy
     };
 
     if mask.is_none() {
-        return Err(format!("Frame {} not found", frame));
+        return Err(format!("failed request - \"{}\" frame type is invalid (doesn't exist)", frame));
     }
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+        return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
     }
 
     let mask = recolor_mask(mask.unwrap(), data.dye);
-
     let mut result = ImageBuffer::new(mask.width(), mask.height());
 
     if let Err(_) = result.copy_from(&character_image, 0, 0) {
-        return Err("Failed to copy character image to result image".to_string());
+        return Err(format!("server error - failed to copy character image onto final canvas"));
     };
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+        return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
     }
 
 
@@ -64,7 +70,7 @@ pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, Dy
     }
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+        return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
     }
 
     result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
@@ -76,7 +82,7 @@ pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, Dy
     });
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+        return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
     }
 
     Ok(result.into())

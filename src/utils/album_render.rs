@@ -41,7 +41,7 @@ pub fn render_album(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<Strin
     let mut result = ImageBuffer::new(x, y);
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+        return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
     }
 
     for (i, image) in images.iter().enumerate() {
@@ -55,7 +55,7 @@ pub fn render_album(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<Strin
         overlay(&mut result, image, x, y);
 
         if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-            return Err(format!("Render took more than {} seconds", RENDER_TIMEOUT));
+            return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
         }
     }
 
