@@ -6,7 +6,7 @@ After = network.target
 [Service]
 Type = exec
 Restart = on-failure
-ExecStart = RUST_LOG=trace /home/ubuntu/hagaki/target/release/hagaki
+ExecStart = RUST_LOG=info /home/ubuntu/hagaki/target/release/hagaki
 WorkingDirectory= /home/ubuntu/hagaki
 MemoryAccounting=true
 MemoryHigh=1024M
