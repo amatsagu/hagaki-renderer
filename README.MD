@@ -1,4 +1,4 @@
-# Hagaki (KCG's custom asset renderer)
+# Hagaki v1.2 (custom asset renderer for Yuli Discord Bot)
 
 ### Building
 To build release binary use command
@@ -15,7 +15,7 @@ make build
 ```nginx
 server {
   listen 80;
-  server_name hagaki.kikuri-bot.xyz;
+  server_name hagaki.yuli-bot.com;
 
   # Security headers
   add_header X-Content-Type-Options nosniff;
@@ -30,21 +30,18 @@ server {
 ```
 
 ### API Routes
-`[ GET    ]` /render/card/{hash64} <br>
-`[ GET    ]` /render/fan/{hash64} <br>
-`[ DELETE ]` /render/{file_name}
+`[ GET ]` /render/album/{hash64} <br>
+`[ GET ]` /render/card/{hash64} <br>
+`[ GET ]` /render/fan/{hash64}
 
 ### List of features
-- Rendering selected card
-- Rendering with selected frame
-- Rendering dyed frame
-- Rendering frame with static decorations
-- Caching frames to increase performance by decreasing disk I/O operations
-- Rendering card fan
-- Paralellized card generation
-- Saving rendered card/fan to drive
-- Serving saved card and fan from drive
-- Removing old/outdated render (protected operation with auth token in header)
+- Ability to request render of single card, fan or album of cards
+- Customization of said cards (frame, color, kindled state)
+- Ability to save render results into disk and use it later for faster access
+- High efficiency
+  * Renders runs in parallel
+  * Service caches common assets (like pieces of frames) to reduce disk I/O operations
+  * Each render can be recreated 1:1 by using same uri, so you can cache http results to reduce number of redundant renders
 
 ### Planned features
 - None
