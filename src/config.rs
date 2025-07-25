@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::LazyLock};
 
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-pub const ADDRESS: &str = "127.0.0.1:8899";
+pub const ADDRESS: &str = "0.0.0.0:8899";
 // pub const AUTH_TOKEN: &str = "a1fe0d2d2469bb472016d667be975b51";
 
 pub const CDN_FRAMES_PATH: &str = "../asset/private/frame";
