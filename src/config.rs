@@ -7,8 +7,8 @@ pub const ADDRESS: &str = "0.0.0.0:8899";
 // pub const AUTH_TOKEN: &str = "a1fe0d2d2469bb472016d667be975b51";
 
 pub const CDN_FRAMES_PATH: &str = "../asset/private/frame";
-pub const CDN_CHARACTER_IMAGES_PATH: &str = "../asset/private/character";
-pub const CDN_CARD_IMAGES_PATH: &str = "../asset/private/custom-character-card";
+pub const CDN_CHARACTER_IMAGES_PATH: &str = "../asset/private/idol";
+pub const CDN_CARD_IMAGES_PATH: &str = "../asset/private/custom-card-art";
 pub const CDN_RENDERS_PATH: &str = "../asset/public/render";
 
 pub const RENDER_TIMEOUT: f32 = 5.0; // in seconds

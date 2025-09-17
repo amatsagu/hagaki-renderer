@@ -31,7 +31,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-dir_content = [int(x[:-4]) for x in listdir("../cdn/public/character")]
+dir_content = [int(x[:-4]) for x in listdir("../cdn/public/idol")]
 
 def get_render_time(address, service, hash):
     url = f'http://{address}/render/{service}/{hash}'
