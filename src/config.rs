@@ -20,16 +20,16 @@ pub const ALBUM_CARD_PADDING: u32 = 10;
 
 pub const FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::new(|| {
     HashMap::from([
-        (FrameType::DefaultFrame, FrameDetails {
-            name: "default",
+        (FrameType::MoonweaverFrame, FrameDetails {
+            name: "moonweaver",
             static_model: true,
             color_model: true,
             extendable: true, // whether can be kindled (has that improved version)
             width: 550,
             height: 800
         }),
-        (FrameType::MinimalBorderFrame, FrameDetails {
-            name: "minimal-border",
+        (FrameType::EssentiaFrame, FrameDetails {
+            name: "essentia",
             static_model: false,
             color_model: true,
             extendable: false,
@@ -42,15 +42,15 @@ pub const FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::ne
 #[repr(u8)]
 #[derive(Eq, PartialEq, Hash, Serialize_repr, Deserialize_repr, Debug, Clone)]
 pub enum FrameType {
-    DefaultFrame = 0,
-    MinimalBorderFrame = 1,
+    MoonweaverFrame = 0,
+    EssentiaFrame = 1,
 }
 
 impl ToString for FrameType {
     fn to_string(&self) -> String {
         match self {
-            FrameType::DefaultFrame => "default".to_string(),
-            FrameType::MinimalBorderFrame => "minimal-border".to_string(),
+            FrameType::MoonweaverFrame => "moonweaver".to_string(),
+            FrameType::EssentiaFrame => "essentia".to_string(),
             // FrameType::BetaFrame => "beta".to_string(),
             // FrameType::EdoHiganFrame => "edo-higan".to_string()
         }
