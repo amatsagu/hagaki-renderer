@@ -1,0 +1,48 @@
+LAST UPDATED: 28.01.2025
+NOTICE: All icons were created by @amatsagu, those that were not will mention their creator/source.
+
+BADGE
+- admin-badge.png
+- commitment-badge.png
+- premium-badge.png
+
+EMBED
+- chest.png (Tatsumaki team)
+- chest-open.gif (Tatsumaki team)
+- clock.png
+- key.png
+- star.png
+
+ITEM
+- black-chalk.png
+- blue-chalk.png
+- broken-card.png
+- card.png
+- chest.png (Tatsumaki team)
+- crystal.png
+- emberglow.png
+- essence.gif
+- frame.png
+- frame-material.png
+- green-chalk.png
+- key.png
+- red-chalk.png
+- stargem.png
+
+MISC
+- attack.png
+- check.png
+- clock.png
+- down.png
+- heart.png
+- inventory.png
+- lock.png
+- luck.png
+- stamina.png
+- star.png
+- tag.png (Minecraft, modified OG tag)
+- up.png
+- x.png
+
+PROGRESS BAR
+- ALL yellow, red, empty bars
