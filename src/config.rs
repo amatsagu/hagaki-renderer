@@ -36,6 +36,14 @@ pub const FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::ne
             width: 550,
             height: 800
         }),
+        (FrameType::SnowglowFrame, FrameDetails { // Snowglow frame (kindled version only) made by Mid
+            name: "snowglow",
+            static_model: true,
+            color_model: false,
+            extendable: true,
+            width: 550,
+            height: 800
+        }),
     ])
 });
 
@@ -44,6 +52,7 @@ pub const FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::ne
 pub enum FrameType {
     MoonweaverFrame = 0,
     EssentiaFrame = 1,
+    SnowglowFrame = 2
 }
 
 impl ToString for FrameType {
@@ -51,8 +60,7 @@ impl ToString for FrameType {
         match self {
             FrameType::MoonweaverFrame => "moonweaver".to_string(),
             FrameType::EssentiaFrame => "essentia".to_string(),
-            // FrameType::BetaFrame => "beta".to_string(),
-            // FrameType::EdoHiganFrame => "edo-higan".to_string()
+            FrameType::SnowglowFrame => "snowglow".to_string(),
         }
     }
 }
