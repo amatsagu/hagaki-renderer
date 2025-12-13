@@ -1,14 +1,11 @@
-#![allow(dead_code)]
 use std::{collections::HashMap, sync::LazyLock};
 
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-pub const ADDRESS: &str = "0.0.0.0:8899";
-// pub const AUTH_TOKEN: &str = "a1fe0d2d2469bb472016d667be975b51";
+pub const ADDRESS: &str = "0.0.0.0:8888";
 
 pub const CDN_FRAMES_PATH: &str = "../asset/private/frame";
 pub const CDN_CHARACTER_IMAGES_PATH: &str = "../asset/private/idol";
-pub const CDN_CARD_IMAGES_PATH: &str = "../asset/private/custom-card-art";
 pub const CDN_RENDERS_PATH: &str = "../asset/public/render";
 
 pub const RENDER_TIMEOUT: f32 = 5.0; // in seconds
@@ -18,7 +15,7 @@ pub const FAN_CIRCLE_CENTER_DISTANCE: f32 = 3000.0;
 
 pub const ALBUM_CARD_PADDING: u32 = 10;
 
-pub const FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::new(|| {
+pub static FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::new(|| {
     HashMap::from([
         (FrameType::MoonweaverFrame, FrameDetails {
             name: "moonweaver",
