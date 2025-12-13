@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::LazyLock};
 
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-pub const ADDRESS: &str = "0.0.0.0:8888";
+pub const ADDRESS: &str = "0.0.0.0:8899";
 
 pub const CDN_FRAMES_PATH: &str = "../asset/private/frame";
 pub const CDN_CHARACTER_IMAGES_PATH: &str = "../asset/private/idol";
