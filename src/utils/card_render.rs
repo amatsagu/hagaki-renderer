@@ -2,12 +2,23 @@ use std::{collections::HashMap, sync::Arc, time::Instant};
 use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageReader, Pixel, Rgba};
 use log::warn;
 use palette::{Srgb, Oklab, IntoColor};
-
-use crate::{config::{CDN_CHARACTER_IMAGES_PATH, RENDER_TIMEOUT}, models::CardRenderRequestData};
-
 use rayon::prelude::*;
 
+use crate::{
+    config::{CDN_CHARACTER_IMAGES_PATH, RENDER_TIMEOUT, FRAME_TABLE}, 
+    models::CardRenderRequestData
+};
+
 pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
+    let frame_details = match FRAME_TABLE.get(&data.frame_type) {
+        Some(details) => details,
+        None => return Err("failed request - invalid frame type provided".to_string()),
+    };
+
+    // Silently switch back to base version if frame is not extendable.
+    // It should technically error but older versions of Hagaki may rely on this behavior!
+    let use_kindled = if data.kindled && !frame_details.extendable { false } else { data.kindled };
+    
     let image_path = if data.variant == 0 {
         format!("{}/{}.png", CDN_CHARACTER_IMAGES_PATH, data.id)
     } else {
@@ -18,102 +29,114 @@ pub fn render_card(data: &CardRenderRequestData, frames: &Arc<HashMap<String, Dy
         Ok(img) => match img.decode() {
             Ok(img) => img,
             Err(e) => {
-                warn!("Failed render due to likely damaged character image on path: {}. Received error: {}", image_path, e);
-                return Err(format!("failed request - failed to decode main image asset."))
+                warn!("Damaged image at {}: {}", image_path, e);
+                return Err("failed request - failed to decode main image asset.".to_string())
             },
         }
         Err(e) => {
-            warn!("Failed render due to missing character image on path: {}. Received error: {}", image_path, e);
-            return Err(format!("failed request - requested card could not be rendered due to missing main image asset."));
+            warn!("Missing image at {}: {}", image_path, e);
+            return Err("failed request - missing main image asset.".to_string());
         },
     };
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
-    }
-    let frame = data.frame_type.to_string();
-
-    let (mask, decoration) = if data.kindled {
-        (frames.get(&format!("{}-kindled-color", frame)), frames.get(&format!("{}-kindled-static", frame)))
-    } else {
-        (frames.get(&format!("{}-color", frame)), frames.get(&format!("{}-static", frame)))
-    };
-
-    if mask.is_none() {
-        return Err(format!("failed request - \"{}\" frame type is invalid (doesn't exist)", frame));
+        return Err("gateway timeout - loading took too long".to_string());
     }
 
-    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
-    }
-
-    let mask = recolor_mask(mask.unwrap(), data.dye);
-    let mut result = ImageBuffer::new(mask.width(), mask.height());
-
-    if let Err(_) = result.copy_from(&character_image, 0, 0) {
-        return Err(format!("server error - failed to copy character image onto final canvas"));
-    };
-
-    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
-    }
-
-
-    if let Some(decoration) = decoration {
-        result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
-            let decoration_pixel = decoration.get_pixel(x, y);
-            if decoration_pixel[3] == 0 {
-                return
-            }
-            p.blend(&decoration_pixel);
-        })
-    }
-
-    if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
-    }
-
-    result.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
-        let mask_pixel = mask.get_pixel(x, y);
-        if mask_pixel[3] == 0 {
-            return
+    let suffix = if use_kindled { "-kindled" } else { "" };
+    let get_layer = |is_needed: bool, type_name: &str| -> Result<Option<&DynamicImage>, String> {
+        if !is_needed { return Ok(None); }
+        let key = format!("{}{}-{}", frame_details.name, suffix, type_name);
+        match frames.get(&key) {
+            Some(img) => Ok(Some(img)),
+            None => Err(format!("server error - missing required asset: {}", key)),
         }
-        p.blend(&mask_pixel);
-    });
+    };
+
+    let color_layer_ref = get_layer(frame_details.color_model, "color")?;
+    let static_layer_ref = get_layer(frame_details.static_model, "static")?;
+
+    let width = frame_details.width;
+    let height = frame_details.height;
+    
+    let mut result = ImageBuffer::new(width, height);
+    if let Err(_) = result.copy_from(&character_image, 0, 0) {
+        return Err("server error - failed to copy character".to_string());
+    };
+
+    if let Some(decoration) = static_layer_ref {
+        apply_layer(&mut result, decoration, width, height);
+    }
+
+    if let Some(mask) = color_layer_ref {
+        apply_dyed_layer(&mut result, mask, data.dye, width, height);
+    }
 
     if start_time.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
-        return Err(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT));
+        return Err("gateway timeout - render calculation took too long".to_string());
     }
 
     Ok(result.into())
 }
 
-fn recolor_mask(mask: &DynamicImage, dye: u32) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
-    // Dye int -> Oklab
+/// Applies a static layer (like a frame overlay)
+/// optimization: converts DynamicImage to Buffer slice to avoid per-pixel dispatch
+fn apply_layer(canvas: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, layer: &DynamicImage, w: u32, h: u32) {
+    let (lw, lh) = layer.dimensions();
+    let fits = lw == w && lh == h;
+
+    // Fast path: direct buffer access if the image is already Rgba8 (highly likely)
+    if let Some(layer_buf) = layer.as_rgba8() {
+        canvas.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
+            if !fits && (x >= lw || y >= lh) { return; }
+            
+            let pixel = layer_buf.get_pixel(x, y);
+            if pixel[3] == 0 { return; } // Skip transparent early
+            p.blend(pixel);
+        });
+    } else {
+        // Slow path: Dynamic dispatch fallback
+        canvas.par_enumerate_pixels_mut().for_each(|(x, y, p)| {
+            if !fits && (x >= lw || y >= lh) { return; }
+            let pixel = layer.get_pixel(x, y);
+            if pixel[3] == 0 { return; }
+            p.blend(&pixel);
+        });
+    }
+}
+
+/// Calculates Oklab dye physics and blends in a single pass
+fn apply_dyed_layer(canvas: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, mask: &DynamicImage, dye: u32, w: u32, h: u32) {
     let overlay_rgb = Srgb::new(
         ((dye >> 16) & 0xFF) as f32 / 255.0,
         ((dye >> 8) & 0xFF) as f32 / 255.0,
         (dye & 0xFF) as f32 / 255.0,
     );
-
     let dye_lab: Oklab = overlay_rgb.into_linear().into_color();
 
-    // Precomputed constants
-    let light_blend_strength = 0.5;  // blend 50% toward dye lightness
-    let blend_strength = 0.90; // blend 90% towards dye hue & saturation
-    let inv_blend_strength = 1.0 - blend_strength;
+    let blend_strength = 0.90;
+    let inv_blend_strength = 0.10;
+    let light_blend_strength = 0.5;
     let chroma_boost_factor = 0.5;
     let max_chroma_squared = 1.0;
 
-    let mut recolored = mask.to_rgba8();
+    let (mw, mh) = mask.dimensions();
+    let fits = mw == w && mh == h;
 
-    recolored.par_enumerate_pixels_mut().for_each(|(_, _, pixel)| {
-        let (r, g, b, a) = (pixel[0], pixel[1], pixel[2], pixel[3]);
+    let mask_buf_opt = mask.as_rgba8();
 
-        if a == 0 {
-            //*pixel = Rgba([0, 0, 0, 0]);
-            return;
-        }
+    canvas.par_enumerate_pixels_mut().for_each(|(x, y, canvas_pixel)| {
+        if !fits && (x >= mw || y >= mh) { return; }
+
+        let (r, g, b, a) = if let Some(buf) = mask_buf_opt {
+            let p = buf.get_pixel(x, y);
+            (p[0], p[1], p[2], p[3])
+        } else {
+            let p = mask.get_pixel(x, y);
+            (p[0], p[1], p[2], p[3])
+        };
+
+        if a == 0 { return; }
 
         let orig_rgb = Srgb::new(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0);
         let orig_lab: Oklab = orig_rgb.into_linear().into_color();
@@ -137,11 +160,10 @@ fn recolor_mask(mask: &DynamicImage, dye: u32) -> ImageBuffer<Rgba<u8>, Vec<u8>>
             b: final_b,
         };
 
-        let final_rgb: Srgb<f32> = Srgb::from_linear(final_lab.into_color());
-        let final_rgb = final_rgb.into_format::<u8>();
-
-        *pixel = Rgba([final_rgb.red, final_rgb.green, final_rgb.blue, a]);
+        let final_rgb_float: Srgb<f32> = Srgb::from_linear(final_lab.into_color());
+        let final_u8 = final_rgb_float.into_format::<u8>();
+        
+        let dyed_pixel = Rgba([final_u8.red, final_u8.green, final_u8.blue, a]);
+        canvas_pixel.blend(&dyed_pixel);
     });
-
-    recolored
 }
