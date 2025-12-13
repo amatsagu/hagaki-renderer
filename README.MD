@@ -1,4 +1,4 @@
-# Hagaki v1.2 (custom asset renderer for Yuli Discord Bot)
+# Hagaki v1.3 (custom asset renderer for Yuli Discord Bot)
 
 ### Building
 To build release binary use command
@@ -41,7 +41,7 @@ server {
 - High efficiency
   * Renders runs in parallel
   * Service caches common assets (like pieces of frames) to reduce disk I/O operations
-  * Each render can be recreated 1:1 by using same uri, so you can cache http results to reduce number of redundant renders
+  * Each render is fully reproductible by using same uri, so you can cache http results to reduce number of redundant renders
 
 ### Planned features
 - None
