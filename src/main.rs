@@ -10,6 +10,8 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::signal;
 
+use tokio::sync::RwLock;
+
 use crate::handlers::render::{
     handle_card_album_request, handle_card_fan_request, handle_card_request,
 };
@@ -19,7 +21,7 @@ async fn main() {
     init_logger();
     info!("Starting service...");
 
-    let frames = Arc::new(utils::load_frames());
+    let frames = Arc::new(RwLock::new(utils::load_frames()));
 
     let router = Router::new()
         .nest(
@@ -27,7 +29,8 @@ async fn main() {
             Router::new()
                 .route("/card/{hash}", get(handle_card_request))
                 .route("/fan/{hash}", get(handle_card_fan_request))
-                .route("/album/{hash}", get(handle_card_album_request)), //.route("/{file_name}", delete(handlers::render_remove))
+                .route("/album/{hash}", get(handle_card_album_request))
+                // .route("/reload", get(handle_reload_request)),
         )
         .fallback(|| async { Response::builder().status(418).body(Body::empty()).unwrap() })
         .layer(Extension(frames));

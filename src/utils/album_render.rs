@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::{collections::HashMap, time::Instant};
 
 use image::{imageops::overlay, DynamicImage, ImageBuffer};
 
@@ -8,7 +8,7 @@ use crate::utils::render_card;
 
 use rayon::prelude::*;
 
-pub fn render_album(data: Vec<CardRenderRequestData>, frames: &Arc<HashMap<String, DynamicImage>>, start_time: &Instant) -> Result<DynamicImage, String> {
+pub fn render_album(data: Vec<CardRenderRequestData>, frames: &HashMap<u32, DynamicImage>, start_time: &Instant) -> Result<DynamicImage, String> {
     let image_count = data.len();
     let images_results: Vec<Result<DynamicImage, String>> = data
         .into_par_iter()

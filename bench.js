@@ -21,13 +21,6 @@ const CONFIG = {
     assetsPath: path.resolve(process.cwd(), values.path)
 };
 
-// --- Frame Rules (Mirrors Rust Config) ---
-const FRAME_RULES = {
-    0: { name: 'moonweaver', extendable: true },
-    1: { name: 'essentia',   extendable: false }, // Cannot be kindled
-    2: { name: 'snowglow',   extendable: true }
-};
-
 // --- Helpers ---
 
 // Load IDs from DIRECTORIES
@@ -55,20 +48,11 @@ function getRandomInt(min, max) {
 
 function getRandomCard() {
     const frameType = getRandomInt(0, 2);
-    const frameRule = FRAME_RULES[frameType];
-
-    let isKindled = false;
-    if (frameRule.extendable) {
-        isKindled = getRandomInt(0, 1) === 1;
-    }
 
     return {
         id: dirContent[Math.floor(Math.random() * dirContent.length)],
         variant: 1,      
-        kindled: isKindled,
-        frame_type: frameType,
-        dye: getRandomInt(0, 2 ** 24 - 1),
-        target_card: false 
+        frame_type: frameType
     };
 }
 

@@ -1,8 +1,4 @@
-use std::{collections::HashMap, sync::LazyLock};
-
-use serde_repr::{Deserialize_repr, Serialize_repr};
-
-pub const ADDRESS: &str = "0.0.0.0:8888";
+pub const ADDRESS: &str = "0.0.0.0:8899";
 
 pub const CDN_FRAMES_PATH: &str = "../asset/private/frame";
 pub const CDN_CHARACTER_IMAGES_PATH: &str = "../asset/private/idol";
@@ -14,59 +10,3 @@ pub const FAN_CARD_ANGLE: f32 = 5.0;
 pub const FAN_CIRCLE_CENTER_DISTANCE: f32 = 3000.0;
 
 pub const ALBUM_CARD_PADDING: u32 = 10;
-
-pub static FRAME_TABLE: LazyLock<HashMap<FrameType, FrameDetails>> = LazyLock::new(|| {
-    HashMap::from([
-        (FrameType::MoonweaverFrame, FrameDetails {
-            name: "moonweaver",
-            static_model: true,
-            color_model: true,
-            extendable: true, // whether can be kindled (has that improved version)
-            width: 550,
-            height: 800
-        }),
-        (FrameType::EssentiaFrame, FrameDetails {
-            name: "essentia",
-            static_model: false,
-            color_model: true,
-            extendable: false,
-            width: 550,
-            height: 800
-        }),
-        (FrameType::SnowglowFrame, FrameDetails { // Snowglow frame (kindled version only) made by Mid
-            name: "snowglow",
-            static_model: true,
-            color_model: false,
-            extendable: true,
-            width: 550,
-            height: 800
-        }),
-    ])
-});
-
-#[repr(u8)]
-#[derive(Eq, PartialEq, Hash, Serialize_repr, Deserialize_repr, Debug, Clone)]
-pub enum FrameType {
-    MoonweaverFrame = 0,
-    EssentiaFrame = 1,
-    SnowglowFrame = 2
-}
-
-impl ToString for FrameType {
-    fn to_string(&self) -> String {
-        match self {
-            FrameType::MoonweaverFrame => "moonweaver".to_string(),
-            FrameType::EssentiaFrame => "essentia".to_string(),
-            FrameType::SnowglowFrame => "snowglow".to_string(),
-        }
-    }
-}
-
-pub struct FrameDetails {
-    pub name: &'static str,
-    pub static_model: bool,
-    pub color_model: bool,
-    pub extendable: bool,
-    pub width: u32,
-    pub height: u32
-}

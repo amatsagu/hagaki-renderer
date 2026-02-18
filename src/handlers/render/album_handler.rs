@@ -8,12 +8,14 @@ use std::io::{BufWriter, Cursor};
 use std::sync::Arc;
 use std::time::Instant;
 
+use tokio::sync::RwLock;
+
 use crate::config::{CDN_RENDERS_PATH, RENDER_TIMEOUT};
 use crate::models::FanRenderRequestData;
 use crate::utils::render_album;
 
 #[axum_macros::debug_handler]
-pub async fn handle_card_album_request(Path(hash): Path<String>, Extension(frames): Extension<Arc<HashMap<String, DynamicImage>>>) -> Response<Body> {
+pub async fn handle_card_album_request(Path(hash): Path<String>, Extension(frames): Extension<Arc<RwLock<HashMap<u32, DynamicImage>>>>) -> Response<Body> {
     let start = Instant::now();
 
     let bytes = match Engine.decode(&hash) {
@@ -44,10 +46,12 @@ pub async fn handle_card_album_request(Path(hash): Path<String>, Extension(frame
         }
     }
 
-    let image = match render_album(decoded.cards, &frames, &start) {
+    let frames_guard = frames.read().await;
+    let image = match render_album(decoded.cards, &frames_guard, &start) {
         Ok(image) => image,
         Err(e) => return Response::builder().status(500).body(Body::from(e)).unwrap(),
     };
+    drop(frames_guard);
 
     if start.elapsed().as_secs_f32() >= RENDER_TIMEOUT {
         return Response::builder().status(500).body(Body::from(format!("gateway timeout - asset render took more than {} seconds", RENDER_TIMEOUT))).unwrap();

@@ -1,4 +1,6 @@
-# Hagaki v1.3 (custom asset renderer for Yuli Discord Bot)
+# Hagaki v1.4-custom
+
+> This version was modified for Rorona Discord Bot - it has colors baked in into frames ahead of time, no longer supports `kindled` frame variants & it now auto loads frame files from disk instead relying on config file. Those changes made average render time 23% faster.
 
 ### Building
 To build release binary use command
@@ -15,7 +17,7 @@ make build
 ```nginx
 server {
   listen 80;
-  server_name hagaki.yuli-bot.com;
+  server_name hagaki.rorona-game.com;
 
   # Security headers
   add_header X-Content-Type-Options nosniff;
@@ -36,7 +38,7 @@ server {
 
 ### List of features
 - Ability to request render of single card, fan or album of cards
-- Customization of said cards (frame, color, kindled state)
+- **Limited** Customization of said cards (frame/color)
 - Ability to save render results into disk and use it later for faster access
 - High efficiency
   * Renders runs in parallel
