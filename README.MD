@@ -34,7 +34,8 @@ server {
 ### API Routes
 `[ GET ]` /render/album/{hash64} <br>
 `[ GET ]` /render/card/{hash64} <br>
-`[ GET ]` /render/fan/{hash64}
+`[ GET ]` /render/fan/{hash64} <br>
+`[ GET ]` /health
 
 ### List of features
 - Ability to request render of single card, fan or album of cards

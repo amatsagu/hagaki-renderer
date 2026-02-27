@@ -4,17 +4,21 @@ mod models;
 mod utils;
 
 use axum::{body::Body, http::Response, routing::get, serve, Extension, Router};
+use chrono::{DateTime, Utc};
 use log::{error, info};
 use pretty_env_logger::init as init_logger;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use tokio::net::TcpListener;
 use tokio::signal;
 
 use tokio::sync::RwLock;
 
+use crate::handlers::health::handle_health_request;
 use crate::handlers::render::{
     handle_card_album_request, handle_card_fan_request, handle_card_request,
 };
+
+pub static START_TIME: LazyLock<DateTime<Utc>> = LazyLock::new(Utc::now);
 
 #[tokio::main]
 async fn main() {
@@ -24,13 +28,13 @@ async fn main() {
     let frames = Arc::new(RwLock::new(utils::load_frames()));
 
     let router = Router::new()
+        .route("/health", get(handle_health_request))
         .nest(
             "/render",
             Router::new()
                 .route("/card/{hash}", get(handle_card_request))
                 .route("/fan/{hash}", get(handle_card_fan_request))
-                .route("/album/{hash}", get(handle_card_album_request))
-                // .route("/reload", get(handle_reload_request)),
+                .route("/album/{hash}", get(handle_card_album_request)),
         )
         .fallback(|| async { Response::builder().status(418).body(Body::empty()).unwrap() })
         .layer(Extension(frames));
